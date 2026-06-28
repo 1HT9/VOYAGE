@@ -1,5 +1,5 @@
 import { eq } from 'drizzle-orm';
-import { db } from '../db/client';
+import { db as maybeDb, localDbAvailable } from '../db/client';
 import { trips, syncState } from '../db/schema';
 import { supabase, isSupabaseConfigured } from '../supabase/client';
 
@@ -15,7 +15,8 @@ import { supabase, isSupabaseConfigured } from '../supabase/client';
  * Les autres tables suivront le même patron en Phase 1.
  */
 export async function syncTrips(): Promise<{ pushed: number; pulled: number } | null> {
-  if (!isSupabaseConfigured) return null;
+  if (!isSupabaseConfigured || !localDbAvailable || !maybeDb) return null;
+  const db = maybeDb;
 
   // 1) PUSH des lignes locales modifiées
   const dirtyRows = db.select().from(trips).where(eq(trips.dirty, 1)).all();

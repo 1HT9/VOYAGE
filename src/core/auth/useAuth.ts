@@ -1,5 +1,6 @@
 import { useEffect } from 'react';
 import { create } from 'zustand';
+import { useShallow } from 'zustand/react/shallow';
 import type { Session, User } from '@supabase/supabase-js';
 import { supabase } from '../supabase/client';
 
@@ -34,12 +35,16 @@ export function useAuthBootstrap() {
 }
 
 export function useAuth() {
-  return useAuthStore((s) => ({
-    session: s.session,
-    user: s.user,
-    initializing: s.initializing,
-    isAuthenticated: Boolean(s.session),
-  }));
+  // useShallow : sans lui, ce sélecteur renvoie un nouvel objet à chaque rendu
+  // et provoque une boucle de re-render infinie (React #185) sous Zustand v5.
+  return useAuthStore(
+    useShallow((s) => ({
+      session: s.session,
+      user: s.user,
+      initializing: s.initializing,
+      isAuthenticated: Boolean(s.session),
+    })),
+  );
 }
 
 export async function signInWithEmail(email: string) {

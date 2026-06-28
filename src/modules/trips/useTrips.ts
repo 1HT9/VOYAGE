@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState } from 'react';
 import { desc, eq, isNull } from 'drizzle-orm';
-import { db } from '@/core/db/client';
+import { db, localDbAvailable } from '@/core/db/client';
 import { trips, type Trip } from '@/core/db/schema';
 
 function uuid() {
@@ -12,13 +12,20 @@ function uuid() {
   });
 }
 
+// Fallback en mémoire quand SQLite est indisponible (preview web).
+let memoryTrips: Trip[] = [];
+
 /** Liste réactive des voyages du foyer, lue depuis la base LOCALE. */
 export function useTrips() {
   const [data, setData] = useState<Trip[]>([]);
 
   const refresh = useCallback(() => {
-    const rows = db.select().from(trips).where(isNull(trips.deletedAt)).orderBy(desc(trips.startDate)).all();
-    setData(rows);
+    if (localDbAvailable && db) {
+      const rows = db.select().from(trips).where(isNull(trips.deletedAt)).orderBy(desc(trips.startDate)).all();
+      setData(rows);
+    } else {
+      setData([...memoryTrips].filter((t) => !t.deletedAt));
+    }
   }, []);
 
   useEffect(() => {
@@ -28,20 +35,26 @@ export function useTrips() {
   const createTrip = useCallback(
     (input: { householdId: string; title: string; startDate?: string; endDate?: string }) => {
       const now = new Date().toISOString();
-      db.insert(trips)
-        .values({
-          id: uuid(),
-          householdId: input.householdId,
-          title: input.title,
-          startDate: input.startDate,
-          endDate: input.endDate,
-          status: 'planning',
-          currency: 'EUR',
-          createdAt: now,
-          updatedAt: now,
-          dirty: 1,
-        })
-        .run();
+      const row: Trip = {
+        id: uuid(),
+        householdId: input.householdId,
+        title: input.title,
+        coverUrl: null,
+        startDate: input.startDate ?? null,
+        endDate: input.endDate ?? null,
+        status: 'planning',
+        budgetTotal: null,
+        currency: 'EUR',
+        createdAt: now,
+        updatedAt: now,
+        deletedAt: null,
+        dirty: 1,
+      };
+      if (localDbAvailable && db) {
+        db.insert(trips).values(row).run();
+      } else {
+        memoryTrips = [row, ...memoryTrips];
+      }
       refresh();
     },
     [refresh],
@@ -50,7 +63,11 @@ export function useTrips() {
   const softDelete = useCallback(
     (id: string) => {
       const now = new Date().toISOString();
-      db.update(trips).set({ deletedAt: now, updatedAt: now, dirty: 1 }).where(eq(trips.id, id)).run();
+      if (localDbAvailable && db) {
+        db.update(trips).set({ deletedAt: now, updatedAt: now, dirty: 1 }).where(eq(trips.id, id)).run();
+      } else {
+        memoryTrips = memoryTrips.map((t) => (t.id === id ? { ...t, deletedAt: now } : t));
+      }
       refresh();
     },
     [refresh],

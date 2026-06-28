@@ -23,8 +23,11 @@
       "expo-secure-store",
       [
         "expo-sqlite",
-        { "enableFTS": true }
-      ]
+        {
+          "enableFTS": true
+        }
+      ],
+      "expo-asset"
     ],
     "experiments": {
       "typedRoutes": true
