@@ -1,0 +1,33 @@
+{
+  "expo": {
+    "name": "Voyage",
+    "slug": "voyage",
+    "version": "0.1.0",
+    "scheme": "voyage",
+    "orientation": "portrait",
+    "userInterfaceStyle": "automatic",
+    "newArchEnabled": true,
+    "ios": {
+      "supportsTablet": true,
+      "bundleIdentifier": "com.voyage.app"
+    },
+    "android": {
+      "package": "com.voyage.app"
+    },
+    "web": {
+      "bundler": "metro",
+      "output": "single"
+    },
+    "plugins": [
+      "expo-router",
+      "expo-secure-store",
+      [
+        "expo-sqlite",
+        { "enableFTS": true }
+      ]
+    ],
+    "experiments": {
+      "typedRoutes": true
+    }
+  }
+}
